@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Hospede(models.Model):
-    nome = models.CharField('nome', max_length=80)
+    nome = models.CharField('nome', max_length=120)
     telefone = models.CharField('telefone', max_length=20)
     documento = models.CharField('documento', max_length=20, unique=True)
     criado_em = models.DateTimeField('criado em', auto_now_add=True)
