@@ -11,18 +11,30 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-phi4_c79rtfrc=v!w64lvee78puj+^*ju^*1s%u4#ss934rbda'
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-phi4_c79rtfrc=v!w64lvee78puj+^*ju^*1s%u4#ss934rbda',
+)
 
 DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
 ALLOWED_HOSTS = os.environ.get(
     'DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1'
+).split(',')
+
+# O proxy do Vite reescreve o Host da requisição para o serviço do backend, mas
+# o Origin continua sendo o do navegador. Sem estas entradas, a verificação de
+# CSRF rejeita todo POST vindo do frontend.
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    'DJANGO_CSRF_TRUSTED_ORIGINS',
+    'http://admin.hospeda,http://localhost,http://localhost:5173,http://127.0.0.1:5173',
 ).split(',')
 
 
@@ -33,6 +45,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
+    'accounts',
 ]
 
 MIDDLEWARE = [
@@ -89,6 +104,35 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'accounts.authentication.CookieJWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
+    'DEFAULT_THROTTLE_CLASSES': ('rest_framework.throttling.ScopedRateThrottle',),
+    'DEFAULT_THROTTLE_RATES': {
+        'register': '5/hour',
+        'login': '5/min',
+    },
+    'NUM_PROXIES': 1,
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_COOKIE': 'access_token',
+    'REFRESH_COOKIE': 'refresh_token',
+    'AUTH_COOKIE_SECURE': not DEBUG,
+    'AUTH_COOKIE_SAMESITE': 'Lax',
+}
+
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = not DEBUG
 
 LANGUAGE_CODE = 'pt-br'
 
