@@ -15,10 +15,12 @@ export default defineConfig({
       '/api': {
         target: apiTarget,
         changeOrigin: true,
+        xfwd: true,
       },
       '/admin': {
         target: apiTarget,
         changeOrigin: true,
+        xfwd: true,
       },
     },
   },
