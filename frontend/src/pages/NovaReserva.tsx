@@ -15,11 +15,31 @@ import {
 } from '@mui/material'
 import { useNavigate } from 'react-router'
 
-import { hospedesApi, reservasApi } from '../api'
+import { fieldErrors, hospedesApi, reservasApi } from '../api'
 import { combinaHospede } from '../filtros'
 import type { Cobranca, Hospede } from '../api'
 import { cores, mono } from '../theme'
 import { currencyBR } from '../components/currency'
+
+const MAX_DOCUMENTO = 11
+const MIN_TELEFONE = 10
+const MAX_TELEFONE = 11
+
+const camposHospede = new Set(['nome', 'documento', 'telefone'])
+
+const validaHospede = (dados: { nome: string; documento: string; telefone: string }) => {
+  const erros: Record<string, string> = {}
+  if (!dados.nome.trim()) erros.nome = 'Informe o nome do hóspede.'
+  if (!dados.documento.trim()) erros.documento = 'Informe o documento.'
+  else if (dados.documento.length > MAX_DOCUMENTO) {
+    erros.documento = `O documento deve ter no máximo ${MAX_DOCUMENTO} caracteres.`
+  }
+  if (!dados.telefone.trim()) erros.telefone = 'Informe o telefone.'
+  else if (dados.telefone.length < MIN_TELEFONE) {
+    erros.telefone = `Informe o telefone com DDD (${MIN_TELEFONE} ou ${MAX_TELEFONE} dígitos).`
+  }
+  return erros
+}
 
 const documento = (valor: string) =>
   valor.length === 11
@@ -83,6 +103,7 @@ const NovaReserva = () => {
 
   const [cobranca, setCobranca] = useState<Cobranca | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [errosCampo, setErrosCampo] = useState<Record<string, string>>({})
   const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
@@ -112,8 +133,27 @@ const NovaReserva = () => {
 
   const visiveis = hospedes.filter((h) => combinaHospede(h, busca))
 
+  const alterarNovo = (campo: keyof typeof novo, valor: string) => {
+    setNovo({ ...novo, [campo]: valor })
+    setErrosCampo((atuais) => {
+      const restante = { ...atuais }
+      delete restante[campo]
+      return restante
+    })
+  }
+
   const confirmar = async () => {
     setErro(null)
+
+    if (modo === 'novo') {
+      const erros = validaHospede(novo)
+      if (Object.keys(erros).length) {
+        setErrosCampo(erros)
+        return
+      }
+    }
+
+    setErrosCampo({})
     setEnviando(true)
     try {
       const hospedeId =
@@ -127,13 +167,20 @@ const NovaReserva = () => {
       })
       navigate('/reservas')
     } catch (falha) {
-      setErro(falha instanceof Error ? falha.message : 'Não foi possível reservar.')
+      const doBackend = fieldErrors(falha)
+      const dosCampos = Object.fromEntries(
+        Object.entries(doBackend).filter(([campo]) => camposHospede.has(campo)),
+      )
+
+      if (Object.keys(dosCampos).length) {
+        setErrosCampo(dosCampos)
+      } else {
+        setErro(falha instanceof Error ? falha.message : 'Não foi possível reservar.')
+      }
     } finally {
       setEnviando(false)
     }
   }
-
-  const pronto = modo === 'novo' ? novo.nome && novo.documento : selecionado !== null
 
   return (
     <Box sx={{ p: 4 }}>
@@ -213,9 +260,12 @@ const NovaReserva = () => {
               <Campo rotulo="NOME">
                 <TextField
                   fullWidth
+                  placeholder="Nome completo"
                   size="small"
                   value={novo.nome}
-                  onChange={(e) => setNovo({ ...novo, nome: e.target.value })}
+                  error={Boolean(errosCampo.nome)}
+                  helperText={errosCampo.nome}
+                  onChange={(e) => alterarNovo('nome', e.target.value)}
                 />
               </Campo>
               <Box sx={{ display: 'flex', gap: 2 }}>
@@ -223,9 +273,14 @@ const NovaReserva = () => {
                   <TextField
                     fullWidth
                     size="small"
-                    placeholder="somente números"
+                    placeholder="Documento"
                     value={novo.documento}
-                    onChange={(e) => setNovo({ ...novo, documento: e.target.value })}
+                    error={Boolean(errosCampo.documento)}
+                    helperText={errosCampo.documento ?? `máximo ${MAX_DOCUMENTO} caracteres`}
+                    slotProps={{ htmlInput: { maxLength: MAX_DOCUMENTO } }}
+                    onChange={(e) =>
+                      alterarNovo('documento', e.target.value.slice(0, MAX_DOCUMENTO))
+                    }
                   />
                 </Campo>
                 <Campo rotulo="TELEFONE">
@@ -234,7 +289,12 @@ const NovaReserva = () => {
                     size="small"
                     placeholder="com DDD"
                     value={novo.telefone}
-                    onChange={(e) => setNovo({ ...novo, telefone: e.target.value })}
+                    error={Boolean(errosCampo.telefone)}
+                    helperText={errosCampo.telefone ?? `${MIN_TELEFONE} ou ${MAX_TELEFONE} dígitos`}
+                    slotProps={{ htmlInput: { maxLength: MAX_TELEFONE } }}
+                    onChange={(e) =>
+                      alterarNovo('telefone', e.target.value.slice(0, MAX_TELEFONE))
+                    }
                   />
                 </Campo>
               </Box>
@@ -310,7 +370,7 @@ const NovaReserva = () => {
             variant="contained"
             size="large"
             sx={{ mt: 3, py: 1.5 }}
-            disabled={!pronto || !estimativa || enviando}
+            disabled={!estimativa || enviando || (modo === 'cadastrado' && selecionado === null)}
             onClick={() => void confirmar()}
           >
             {enviando ? 'Confirmando…' : 'Confirmar reserva'}

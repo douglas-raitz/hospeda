@@ -280,3 +280,33 @@
     gap: 0;
   }
 }
+
+/* Requisitos da senha, logo abaixo do botão de cadastro. */
+.auth-requisitos {
+  margin-top: 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 150%;
+  color: var(--muted);
+
+  li {
+    display: grid;
+    grid-template-columns: 16px 1fr;
+    align-items: baseline;
+    gap: 4px;
+
+    span {
+      font-family: var(--mono);
+      text-align: center;
+    }
+
+    &.is-ok {
+      color: var(--green);
+    }
+
+    &[data-informativo] span {
+      opacity: 0.6;
+    }
+  }
+}
