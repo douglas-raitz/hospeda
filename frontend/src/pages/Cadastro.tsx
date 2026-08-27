@@ -6,6 +6,40 @@ import { fieldErrors } from '../api'
 import { useUser } from '../context/UserContext'
 import './auth.css'
 
+type Requisito = { texto: string; atendido: boolean | null }
+
+const pareceCom = (senha: string, atributo: string) => {
+  const alvo = atributo.trim().toLowerCase().split('@')[0]
+  if (alvo.length < 3) return false
+  const valor = senha.toLowerCase()
+  return valor.includes(alvo) || alvo.includes(valor)
+}
+
+const requisitosDaSenha = (form: {
+  username: string
+  email: string
+  password: string
+  password_confirm: string
+}): Requisito[] => {
+  const { password: senha } = form
+  const preenchida = senha.length > 0
+
+  return [
+    { texto: 'Ao menos 8 caracteres', atendido: senha.length >= 8 },
+    { texto: 'Não pode conter apenas números', atendido: preenchida && !/^\d+$/.test(senha) },
+    {
+      texto: 'Não pode ser parecida com o usuário ou o e-mail',
+      atendido:
+        preenchida && !pareceCom(senha, form.username) && !pareceCom(senha, form.email),
+    },
+    { texto: 'Não pode ser uma senha comum, como “senha123”', atendido: null },
+    {
+      texto: 'As duas senhas devem coincidir',
+      atendido: preenchida && senha === form.password_confirm,
+    },
+  ]
+}
+
 const Cadastro = () => {
   const { register } = useUser()
   const navigate = useNavigate()
@@ -51,6 +85,7 @@ const Cadastro = () => {
   }
 
   const generalError = errors.detail ?? errors.non_field_errors
+  const requisitos = requisitosDaSenha(form)
 
   return (
     <section className="auth-screen">
@@ -147,7 +182,19 @@ const Cadastro = () => {
             {submitting ? 'Criando…' : 'Criar conta e entrar'}
           </button>
 
-          <p className="auth-meta">A senha deve ter ao menos 8 caracteres.</p>
+          <p className="auth-meta">Requisitos da senha</p>
+          <ul className="auth-requisitos">
+            {requisitos.map(({ texto, atendido }) => (
+              <li
+                key={texto}
+                className={atendido ? 'is-ok' : undefined}
+                data-informativo={atendido === null || undefined}
+              >
+                <span aria-hidden="true">{atendido ? '✓' : '•'}</span>
+                {texto}
+              </li>
+            ))}
+          </ul>
         </form>
       </div>
     </section>

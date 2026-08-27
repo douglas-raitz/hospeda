@@ -11,8 +11,9 @@ import {
 import Layout from '../components/Layout'
 import { useUser } from '../context/UserContext'
 import Cadastro from '../pages/Cadastro'
-import Dashboard from '../pages/Dashboard'
 import Login from '../pages/Login'
+import NovaReserva from '../pages/NovaReserva'
+import Reservas from '../pages/Reservas'
 
 const Carregando = () => <p className="auth-status">Verificando sessão…</p>
 
@@ -33,7 +34,7 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
   const { status } = useUser()
 
   if (status === 'loading') return <Carregando />
-  if (status === 'authenticated') return <Navigate to="/" replace />
+  if (status === 'authenticated') return <Navigate to="/reservas" replace />
 
   return <>{children}</>
 }
@@ -43,11 +44,12 @@ const RotaNaoEncontrada = () => {
 
   if (status === 'loading') return <Carregando />
 
-  return <Navigate to={status === 'authenticated' ? '/' : '/login'} replace />
+  return <Navigate to={status === 'authenticated' ? '/reservas' : '/login'} replace />
 }
 
 const PRIVATE_URLS: { title: string; url: string; component: () => ReactElement }[] = [
-  { title: 'Início', url: '/', component: () => <Dashboard /> },
+  { title: 'Reservas', url: '/reservas', component: () => <Reservas /> },
+  { title: 'Nova reserva', url: '/reservas/nova', component: () => <NovaReserva /> },
 ]
 
 const router = createBrowserRouter(
@@ -70,6 +72,7 @@ const router = createBrowserRouter(
         </PublicRoute>
       }
     />,
+    <Route key="raiz" path="/" element={<Navigate to="/reservas" replace />} />,
     <Route key="layout" element={<Layout />}>
       {PRIVATE_URLS.map((route) => (
         <Route

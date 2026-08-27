@@ -164,3 +164,91 @@ export const authApi = {
 
   logout: () => request<void>('/auth/logout/', { method: 'POST' }),
 }
+
+/* Hóspedes e reservas ------------------------------------------------------ */
+
+export type Hospede = {
+  id: number
+  nome: string
+  telefone: string
+  documento: string
+}
+
+export type HospedeInput = Omit<Hospede, 'id'>
+
+export type StatusReserva = 'PENDENTE' | 'HOSPEDADO' | 'FINALIZADA' | 'CANCELADA'
+
+export type Reserva = {
+  id: number
+  hospede: number
+  hospede_detalhe: Hospede
+  data_entrada: string
+  data_saida: string
+  status: StatusReserva
+  valor_total: string | null
+}
+
+export type ReservaInput = {
+  hospede: number
+  data_entrada: string
+  data_saida: string
+}
+
+export type Diaria = {
+  data: string
+  fim_de_semana: boolean
+  valor_diaria: string
+}
+
+export type Cobranca = {
+  diarias: Diaria[]
+  noites: number
+  total_diarias: string
+  check_out_atrasado: boolean
+  multa_check_out: string
+  total_geral: string
+}
+
+export type EstimativaInput = Pick<
+  ReservaInput,
+  'data_entrada' | 'data_saida'
+>
+
+export const hospedesApi = {
+  listar: () => request<Hospede[]>('/hospedes/'),
+
+  criar: (input: HospedeInput) =>
+    request<Hospede>('/hospedes/', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+}
+
+export const reservasApi = {
+  listar: () => request<Reserva[]>('/reservas/'),
+
+  criar: (input: ReservaInput) =>
+    request<Reserva>('/reservas/', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  resumo: (id: number) => request<Cobranca>(`/reservas/${id}/resumo/`),
+
+  estimativa: (input: EstimativaInput) =>
+    request<Cobranca>('/reservas/estimativa/', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  checkIn: (id: number, confirmar = false) =>
+    request<Reserva>(`/reservas/${id}/check-in/`, {
+      method: 'POST',
+      body: JSON.stringify({ confirmar }),
+    }),
+
+  checkOut: (id: number) =>
+    request<{ reserva: Reserva; cobranca: Cobranca }>(`/reservas/${id}/check-out/`, {
+      method: 'POST',
+    }),
+}
