@@ -9,11 +9,12 @@ from reservas.models import Reserva
 
 from .models import Hospede
 from .serializers import HospedeSerializer
+from .services import validar_cpf
 
 DADOS_VALIDOS = {
     'nome': 'Maria Souza',
     'telefone': '47999998888',
-    'documento': '12345678901',
+    'documento': '52998224725',
 }
 
 
@@ -30,7 +31,7 @@ class HospedeSerializerTests(TestCase):
 
         self.assertEqual(dados['id'], 7)
         self.assertEqual(dados['nome'], 'Maria Souza')
-        self.assertEqual(dados['documento'], '12345678901')
+        self.assertEqual(dados['documento'], '52998224725')
 
     def test_nome_curto_e_rejeitado(self):
         serializer = HospedeSerializer(data={**DADOS_VALIDOS, 'nome': 'Jo'})
@@ -40,7 +41,7 @@ class HospedeSerializerTests(TestCase):
     def test_telefone_precisa_de_ddd(self):
         for telefone, valido in [('999998888', False), ('4799999888', True), ('47999998888', True)]:
             serializer = HospedeSerializer(
-                data={**DADOS_VALIDOS, 'telefone': telefone, 'documento': '9' * 11}
+                data={**DADOS_VALIDOS, 'telefone': telefone}
             )
             self.assertEqual(serializer.is_valid(), valido, telefone)
 
@@ -48,6 +49,23 @@ class HospedeSerializerTests(TestCase):
         serializer = HospedeSerializer(data={**DADOS_VALIDOS, 'documento': '123'})
         self.assertFalse(serializer.is_valid())
         self.assertIn('documento', serializer.errors)
+
+    def test_documento_com_digitos_verificadores_invalidos_e_rejeitado(self):
+        for documento in ('12345678901', '9' * 11, '52998224724'):
+            serializer = HospedeSerializer(
+                data={**DADOS_VALIDOS, 'documento': documento}
+            )
+
+            self.assertFalse(serializer.is_valid(), documento)
+            self.assertIn('documento', serializer.errors)
+
+    def test_documento_formatado_e_aceito_e_normalizado(self):
+        serializer = HospedeSerializer(
+            data={**DADOS_VALIDOS, 'documento': '529.982.247-25'}
+        )
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['documento'], '52998224725')
 
 
 class HospedeApiTests(TestCase):
@@ -68,7 +86,7 @@ class HospedeApiTests(TestCase):
 
         self.assertEqual(resposta.status_code, 201)
         self.assertEqual(resposta.data['nome'], 'Maria Souza')
-        self.assertTrue(Hospede.objects.filter(documento='12345678901').exists())
+        self.assertTrue(Hospede.objects.filter(documento='52998224725').exists())
 
     def test_documento_duplicado_e_rejeitado(self):
         Hospede.objects.create(**DADOS_VALIDOS)
@@ -83,7 +101,7 @@ class HospedeApiTests(TestCase):
     def test_lista_hospedes_cadastrados(self):
         Hospede.objects.create(**DADOS_VALIDOS)
         Hospede.objects.create(
-            nome='João Lima', telefone='4788887777', documento='98765432100'
+            nome='João Lima', telefone='4788887777', documento='11144477735'
         )
 
         resposta = self.client.get('/api/hospedes/')
@@ -94,7 +112,7 @@ class HospedeApiTests(TestCase):
     def test_filtra_pela_situacao_da_reserva(self):
         hospede = Hospede.objects.create(**DADOS_VALIDOS)
         Hospede.objects.create(
-            nome='João Lima', telefone='4788887777', documento='98765432100'
+            nome='João Lima', telefone='4788887777', documento='11144477735'
         )
         Reserva.objects.create(
             hospede=hospede,
@@ -107,3 +125,23 @@ class HospedeApiTests(TestCase):
 
         self.assertEqual([h['nome'] for h in aguardando.data], ['Maria Souza'])
         self.assertEqual(no_hotel.data, [])
+
+
+class ValidarCpfTests(TestCase):
+    """Regras dos dígitos verificadores, sem passar pelo serializer."""
+
+    def test_aceita_cpf_valido_com_e_sem_formatacao(self):
+        for cpf in ('52998224725', '529.982.247-25', '111.444.777-35'):
+            self.assertTrue(validar_cpf(cpf), cpf)
+
+    def test_rejeita_digitos_verificadores_errados(self):
+        self.assertFalse(validar_cpf('52998224724'))
+        self.assertFalse(validar_cpf('12345678901'))
+
+    def test_rejeita_sequencias_repetidas(self):
+        for digito in '0123456789':
+            self.assertFalse(validar_cpf(digito * 11), digito)
+
+    def test_rejeita_quantidade_de_digitos_diferente_de_onze(self):
+        for cpf in ('', '123', '5299822472', '529982247251'):
+            self.assertFalse(validar_cpf(cpf), cpf)

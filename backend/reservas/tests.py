@@ -88,7 +88,7 @@ class ReservaModelTests(TestCase):
 
     def setUp(self):
         self.hospede = Hospede.objects.create(
-            nome='Maria Souza', telefone='47999998888', documento='12345678901'
+            nome='Maria Souza', telefone='47999998888', documento='52998224725'
         )
         self.reserva = Reserva.objects.create(
             hospede=self.hospede,
@@ -137,7 +137,7 @@ class ReservaApiTests(TestCase):
         self.client = APIClient()
         self.client.force_authenticate(self.user)
         self.hospede = Hospede.objects.create(
-            nome='Maria Souza', telefone='47999998888', documento='12345678901'
+            nome='Maria Souza', telefone='47999998888', documento='52998224725'
         )
 
     def _criar_reserva(self, **extra):
