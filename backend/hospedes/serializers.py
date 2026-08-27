@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import Hospede
+from .services import apenas_digitos, validar_cpf
 
 
 class HospedeSerializer(serializers.ModelSerializer):
@@ -11,6 +12,9 @@ class HospedeSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'criado_em', 'atualizado_em')
 
     def to_internal_value(self, data):
+        documento = data.get('documento') if hasattr(data, 'get') else None
+        if isinstance(documento, str):
+            data = {**data, 'documento': apenas_digitos(documento)}
         return super().to_internal_value(data)
 
     def validate_nome(self, value):
@@ -28,8 +32,16 @@ class HospedeSerializer(serializers.ModelSerializer):
         return value
 
     def validate_documento(self, value):
-        if len(value) != 11:
+        documento = apenas_digitos(value)
+
+        if len(documento) != 11:
             raise serializers.ValidationError(
                 'O documento deve ter 11 dígitos.'
             )
-        return value
+
+        if not validar_cpf(documento):
+            raise serializers.ValidationError(
+                'Informe um CPF válido.'
+            )
+
+        return documento
