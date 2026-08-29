@@ -14,7 +14,8 @@ Docker.
 
 ## Rodar em outra máquina
 
-Só é preciso ter **Docker e Docker Compose** instalados:
+Só é preciso ter **Python, Docker e Docker Compose** instalados:
+Com os requisitos acima instalados, siga o fluxo:
 
 ```bash
 git clone https://github.com/douglas-raitz/hospeda.git
@@ -22,15 +23,16 @@ cd hospeda
 ```
 o .env não é versionado (contém credenciais), então crie o seu a partir do modelo
 Após clonar o repositório, é necessário fazer uma copia do arquivo .env.example para permitir adicionar a chave gerada, segue o comando:
-➜ cp .env.example .env
+➜ ```cp .env.example .env```
 
 Arquivo gerado, agora é necessário gerar uma nova chave assinada, segue o comando:
-➜ python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+➜ ```python -c "import secrets; print(secrets.token_urlsafe(50))"```
 Após gerar a chave, você terá um retorno semelhante à ➜ pplqhU_xkpcyU1L_2tfudbZxXxKMrdL945YFKSbGxprbf7j7Ak_f9KJUASS0bgPPyrA
 
 Próximo passo, procure pelo arquivo .env na raiz do projeto, e atribua essa chave no campo `DJANGO_SECRET_KEY`:
 Resultado esperado ➜ DJANGO_SECRET_KEY=pplqhU_xkpcyU1L_2tfudbZxXxKMrdL945YFKSbGxprbf7j7Ak_f9KJUASS0bgPPyrA
 
+No terminal do Vscode, rode o seguinte comando:
 ```docker compose up --build```
 O `DJANGO_SECRET_KEY` vem em branco no `.env.example` e **precisa ser
 preenchido** — o compose se recusa a subir enquanto ele estiver vazio:
